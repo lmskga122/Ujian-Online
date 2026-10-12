@@ -959,20 +959,55 @@ function showAdminTab(tab, button) {
   if (tab === "results") loadLeaderboard();
 }
 
-function refreshAdminStats() {
-  if ($("stat-exams")) $("stat-exams").textContent = readAdminData("exams").length;
 
-  if ($("stat-questions")) {
-    $("stat-questions").textContent = readAdminData(
-      "questions",
-      questions.map(q => ({
-        question: q.q,
-        options: q.options,
-        answer: q.a,
-        points: 1
-      }))
-    ).length;
+async function refreshAdminStats() {
+  const db = window.firebaseServices?.db;
+
+  if (!db) {
+    console.error("Firebase Firestore belum terhubung.");
+    return;
   }
+
+  try {
+    const [
+      examsSnapshot,
+      questionsSnapshot,
+      studentsSnapshot,
+      resultsSnapshot
+    ] = await Promise.all([
+      db.collection("ujian").get(),
+      db.collection("bank_soal").get(),
+      db.collection("daftar_mahasiswa").get(),
+      db.collection("exam_results").get()
+    ]);
+
+    if ($("stat-exams")) {
+      $("stat-exams").textContent = examsSnapshot.size;
+    }
+
+    if ($("stat-questions")) {
+      $("stat-questions").textContent = questionsSnapshot.size;
+    }
+
+    if ($("stat-students")) {
+      $("stat-students").textContent = studentsSnapshot.size;
+    }
+
+    if ($("stat-results")) {
+      $("stat-results").textContent = resultsSnapshot.size;
+    }
+
+    console.log("Statistik Firebase:", {
+      ujian: examsSnapshot.size,
+      soal: questionsSnapshot.size,
+      mahasiswa: studentsSnapshot.size,
+      hasil: resultsSnapshot.size
+    });
+
+  } catch (error) {
+    console.error("Gagal memperbarui statistik Firebase:", error);
+  }
+}
 
   if ($("stat-students")) $("stat-students").textContent = readAdminData("students").length;
   if ($("stat-results")) $("stat-results").textContent = readHistory().length;
