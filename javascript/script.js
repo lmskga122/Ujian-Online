@@ -1162,17 +1162,29 @@ async function renderAdminQuestions() {
       return;
     }
 
-    listElement.innerHTML = list.map(function(q, i) {
-      return `
-        <article class="question-admin-item">
-          <strong>${i + 1}. ${escapeHtml(q.question)}</strong>
-          <small>
-            Kunci: ${escapeHtml(q.answer || "-")}
-            · Skor: ${q.points}
-          </small>
-        </article>
-      `;
-    }).join("");
+
+listElement.innerHTML = list.map(function(q, i) {
+  return `
+    <article class="question-admin-item">
+      <strong>${i + 1}. ${escapeHtml(q.question)}</strong>
+
+      <small>
+        Kunci: ${escapeHtml(q.answer || "-")}
+        · Skor: ${q.points}
+      </small>
+
+      <div style="margin-top: 12px;">
+        <button
+          type="button"
+          class="btn-danger small-btn"
+          onclick="deleteQuestion('${q.id}')">
+          Hapus soal
+        </button>
+      </div>
+    </article>
+  `;
+}).join("");
+
 
     console.log(
       "Jumlah soal yang dibaca dari Firestore:",
@@ -1189,11 +1201,45 @@ async function renderAdminQuestions() {
   }
 }
 
-function deleteQuestion(id) {
-  writeAdminData("questions", readAdminData("questions").filter(q => q.id !== id));
-  renderAdminQuestions();
-  refreshAdminStats();
+
+async function deleteQuestion(id) {
+  const confirmed = confirm(
+    "Yakin ingin menghapus soal ini dari Firebase?"
+  );
+
+  if (!confirmed) return;
+
+  const db = window.firebaseServices?.db;
+  const auth = window.firebaseServices?.auth;
+
+  if (!db || !auth?.currentUser) {
+    alert("Firebase belum terhubung atau admin belum login.");
+    return;
+  }
+
+  try {
+    const token = await auth.currentUser.getIdTokenResult();
+
+    if (token.claims.admin !== true) {
+      alert("Akun ini tidak memiliki hak admin.");
+      return;
+    }
+
+    await db.collection("bank_soal").doc(id).delete();
+
+    alert("Soal berhasil dihapus dari Firebase.");
+
+    await renderAdminQuestions();
+
+    if (typeof refreshAdminStats === "function") {
+      refreshAdminStats();
+    }
+  } catch (error) {
+    console.error("Gagal menghapus soal:", error);
+    alert("Gagal menghapus soal: " + error.message);
+  }
 }
+
 
 // ============================================================
 // PARSER CSV
