@@ -1430,7 +1430,6 @@ async function importStudentsCsv() {
   }
 }
 
-javascript
 async function saveStudent(event) {
   event.preventDefault();
 
