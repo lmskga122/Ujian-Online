@@ -1009,9 +1009,6 @@ async function refreshAdminStats() {
   }
 }
 
-  if ($("stat-students")) $("stat-students").textContent = readAdminData("students").length;
-  if ($("stat-results")) $("stat-results").textContent = readHistory().length;
-}
 
 // ============================================================
 // MANAJEMEN UJIAN
@@ -1429,6 +1426,7 @@ async function importStudentsCsv() {
     }
   }
 }
+
 
 async function saveStudent(event) {
   event.preventDefault();
