@@ -970,54 +970,45 @@ function showAdminTab(tab, button) {
 }
 
 
+
 async function refreshAdminStats() {
   const db = window.firebaseServices?.db;
+  const auth = window.firebaseServices?.auth;
 
-  if (!db) {
-    console.error("Firebase Firestore belum terhubung.");
+  if (!db || !auth?.currentUser) {
+    console.error("Firebase atau sesi admin belum tersedia.");
     return;
   }
 
-  try {
-    const [
-      examsSnapshot,
-      questionsSnapshot,
-      studentsSnapshot,
-      resultsSnapshot
-    ] = await Promise.all([
-      db.collection("ujian").get(),
-      db.collection("bank_soal").get(),
-      db.collection("daftar_mahasiswa").get(),
-      db.collection("exam_results").get()
-    ]);
+  const collections = [
+    { name: "ujian", element: "stat-exams" },
+    { name: "bank_soal", element: "stat-questions" },
+    { name: "daftar_mahasiswa", element: "stat-students" },
+    { name: "exam_results", element: "stat-results" }
+  ];
 
-    if ($("stat-exams")) {
-      $("stat-exams").textContent = examsSnapshot.size;
+  for (const item of collections) {
+    try {
+      const snapshot = await db.collection(item.name).get();
+      const element = $(item.element);
+
+      if (element) {
+        element.textContent = snapshot.size;
+      }
+
+      console.log(
+        `[Statistik] ${item.name}: ${snapshot.size} dokumen`
+      );
+    } catch (error) {
+      console.error(
+        `[Statistik] Gagal membaca ${item.name}:`,
+        error.code,
+        error.message
+      );
     }
-
-    if ($("stat-questions")) {
-      $("stat-questions").textContent = questionsSnapshot.size;
-    }
-
-    if ($("stat-students")) {
-      $("stat-students").textContent = studentsSnapshot.size;
-    }
-
-    if ($("stat-results")) {
-      $("stat-results").textContent = resultsSnapshot.size;
-    }
-
-    console.log("Statistik Firebase:", {
-      ujian: examsSnapshot.size,
-      soal: questionsSnapshot.size,
-      mahasiswa: studentsSnapshot.size,
-      hasil: resultsSnapshot.size
-    });
-
-  } catch (error) {
-    console.error("Gagal memperbarui statistik Firebase:", error);
   }
 }
+
 
 
 // ============================================================
@@ -1497,7 +1488,6 @@ async function saveStudent(event) {
 }
 
 
-javascript
 async function renderStudents() {
   const tbody = $("student-list-body");
   const countLabel = $("student-count-label");
