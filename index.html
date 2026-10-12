@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173b66">
+
+  <title>Sistem Ujian Online </title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+
+  <!-- CSS utama -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Font Awesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  >
+</head>
+
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <!-- Header -->
+  
+
+<a class="brand" href="#" aria-label="Sistem Ujian Online Leo Michel">
+  <span class="brand-mark">LM</span>
+  <span>
+    <strong>LEO MICHEL</strong>
+    <small>PERSONAL ONLINE EXAM SYSTEM</small>
+  </span>
+</a>
+
+  <main class="page-wrap">
+
+    <!-- ================= LOGIN ================= -->
+    <section id="login-section" class="login-layout">
+
+      <div class="welcome-panel">
+        <div class="eyebrow">
+          <span class="eyebrow-icon">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </span>
+          DIGITAL EXAMINATION PLATFORM
+        </div>
+
+        <h1>
+          Uji kemampuanmu.
+          <br>
+          <span>Raih hasil terbaik.</span>
+        </h1>
+
+        <p>
+          Platform ujian online untuk membantu pelaksanaan evaluasi
+          akademik yang tertib, praktis, dan terukur.
+        </p>
+
+        <div class="feature-list">
+          <div>
+            <span class="feature-icon">
+              <i class="fa-regular fa-clock"></i>
+            </span>
+            <span>
+              <b>Waktu terpantau</b>
+              <small>Timer ujian ditampilkan secara langsung.</small>
+            </span>
+          </div>
+
+          <div>
+            <span class="feature-icon">
+              <i class="fa-solid fa-list-check"></i>
+            </span>
+            <span>
+              <b>Pengerjaan terarah</b>
+              <small>Navigasi soal yang jelas dan mudah digunakan.</small>
+            </span>
+          </div>
+
+          <div>
+            <span class="feature-icon">
+              <i class="fa-solid fa-chart-simple"></i>
+            </span>
+            <span>
+              <b>Hasil terstruktur</b>
+              <small>Rekap nilai dapat dikelola oleh admin.</small>
+            </span>
+          </div>
+        </div>
+
+        <div class="welcome-note">
+          <i class="fa-solid fa-circle-info"></i>
+          Pastikan identitas yang dimasukkan sesuai dengan data
+          mahasiswa terdaftar.
+        </div>
+      </div>
+
+      <!-- Kartu Login -->
+      <div class="login-card">
+        <div class="card-brand">
+          <div class="brand-mark">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </div>
+          <span>Selamat datang</span>
+        </div>
+
+        <h2>Masuk ke portal</h2>
+        <p class="muted">
+          Gunakan identitas yang sesuai untuk melanjutkan.
+        </p>
+
+        <!-- Pilihan peran -->
+        <div class="role-switch" role="tablist" aria-label="Jenis login">
+          <button
+            class="role-button active"
+            id="student-tab"
+            type="button"
+            onclick="setLoginMode('student')"
+          >
+            <i class="fa-solid fa-user-graduate"></i>
+            Mahasiswa
+          </button>
+
+          <button
+            class="role-button"
+            id="admin-tab"
+            type="button"
+            onclick="setLoginMode('admin')"
+          >
+            <i class="fa-solid fa-user-shield"></i>
+            Admin
+          </button>
+        </div>
+
+        <!-- Login Mahasiswa -->
+        <form
+          id="student-form"
+          onsubmit="event.preventDefault(); startExam();"
+        >
+          <label for="username">Nama lengkap</label>
+
+          <div class="field">
+            <i class="fa-regular fa-user"></i>
+            <input
+              id="username"
+              type="text"
+              placeholder="Masukkan nama lengkap"
+              autocomplete="name"
+              required
+            >
+          </div>
+
+          <label for="student-nim">Nomor Induk Mahasiswa (NIM)</label>
+
+          <div class="field">
+            <i class="fa-solid fa-id-card"></i>
+            <input
+              id="student-nim"
+              type="text"
+              inputmode="numeric"
+              placeholder="Masukkan NIM"
+              autocomplete="off"
+              required
+            >
+          </div>
+
+          <button class="btn-primary full-width" type="submit">
+            Masuk sebagai mahasiswa
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+
+          <p class="form-footnote">
+            <i class="fa-solid fa-lock"></i>
+            Identitas akan dicocokkan dengan data peserta setelah
+            integrasi Firebase selesai.
+          </p>
+        </form>
+
+        <!-- Login Admin -->
+        <form
+          id="admin-form"
+          class="hidden"
+          onsubmit="event.preventDefault(); checkAdmin();"
+        >
+          <label for="admin-email">Email admin</label>
+
+          <div class="field">
+            <i class="fa-regular fa-envelope"></i>
+            <input
+              id="admin-email"
+              type="email"
+              placeholder="admin@gmail.com"
+              autocomplete="username"
+              required
+            >
+          </div>
+
+          <label for="admin-pass">Kata sandi</label>
+
+          <div class="field">
+            <i class="fa-solid fa-lock"></i>
+            <input
+              id="admin-pass"
+              type="password"
+              placeholder="Masukkan kata sandi"
+              autocomplete="current-password"
+              required
+            >
+          </div>
+
+          <button class="btn-primary full-width" type="submit">
+            Masuk ke panel admin
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+
+          <p class="form-footnote">
+            <i class="fa-solid fa-shield-halved"></i>
+            Login admin menggunakan Firebase Authentication.
+          </p>
+        </form>
+
+        <div
+          id="login-message"
+          class="inline-message hidden"
+          role="status"
+        ></div>
+      </div>
+    </section>
+
+    <!-- ================= RUANG UJIAN ================= -->
+    <section id="exam-section" class="workspace hidden">
+      <div class="workspace-heading">
+        <div>
+          <span class="eyebrow">RUANG UJIAN</span>
+          <h1>Kerjakan dengan fokus.</h1>
+          <p class="muted" id="display-name">Peserta: -</p>
+        </div>
+
+        <div class="timer-card">
+          <span class="timer-label">
+            <i class="fa-regular fa-clock"></i>
+            Sisa waktu
+          </span>
+          <strong id="timer">20:00</strong>
+        </div>
+      </div>
+
+      <div class="exam-grid">
+        <aside class="exam-sidebar">
+          <h3>Navigasi soal</h3>
+          <p class="muted small">
+            Pilih nomor untuk berpindah soal.
+          </p>
+
+          <div id="question-nav" class="question-nav"></div>
+
+          <div class="legend">
+            <span>
+              <i class="legend-dot answered"></i>
+              Terjawab
+            </span>
+            <span>
+              <i class="legend-dot"></i>
+              Belum dijawab
+            </span>
+          </div>
+        </aside>
+
+        <div class="question-panel">
+          <div class="question-topline">
+            <span id="question-progress">SOAL 1 DARI 20</span>
+            <span class="pill">Pilihan ganda</span>
+          </div>
+
+          <div id="question-container"></div>
+
+          <div class="exam-bottom">
+            <button
+              class="btn-secondary"
+              id="prev-question"
+              type="button"
+              onclick="changeQuestion(-1)"
+            >
+              <i class="fa-solid fa-arrow-left"></i>
+              Sebelumnya
+            </button>
+
+            <button
+              class="btn-primary"
+              id="next-question"
+              type="button"
+              onclick="changeQuestion(1)"
+            >
+              Soal berikutnya
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+
+            <button
+              class="btn-primary hidden"
+              id="submit-exam"
+              type="button"
+              onclick="submitExam()"
+            >
+              Kumpulkan ujian
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= HASIL UJIAN ================= -->
+    <section id="result-section" class="workspace hidden">
+      <div class="result-card">
+        <div class="result-icon">
+          <i class="fa-solid fa-check"></i>
+        </div>
+
+        <span class="eyebrow">UJIAN SELESAI</span>
+        <h1>Jawaban berhasil diproses</h1>
+
+        <p class="muted">
+          Berikut ringkasan hasil pengerjaanmu.
+        </p>
+
+        <div id="score-summary" class="score-summary"></div>
+
+        <button class="btn-primary" type="button" onclick="resetApp()">
+          Kembali ke halaman utama
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <div id="admin-login-area" class="admin-access-card">
+        <div>
+          <h3>
+            <i class="fa-solid fa-user-shield"></i>
+            Akses administrator
+          </h3>
+          <p class="muted">
+            Panel pengelolaan hanya untuk admin yang berwenang.
+          </p>
+        </div>
+
+        <button
+          class="btn-secondary"
+          type="button"
+          onclick="setLoginMode('admin'); showLoginFromResult()"
+        >
+          Buka login admin
+        </button>
+      </div>
+
+      <!-- ================= PANEL ADMIN ================= -->
+      <div id="admin-content" class="admin-panel hidden">
+        <div class="admin-panel-heading">
+          <div>
+            <span class="eyebrow">ADMINISTRATOR</span>
+            <h2>Panel Pengelolaan Ujian</h2>
+            <p class="muted">
+              Kelola ujian, bank soal, peserta, durasi, dan hasil
+              dari satu tempat.
+            </p>
+          </div>
+
+          <button
+            class="btn-secondary"
+            type="button"
+            onclick="adminLogout()"
+          >
+            Keluar dari panel
+          </button>
+        </div>
+
+        <!-- Navigasi Admin -->
+        <div class="admin-tabs" role="tablist" aria-label="Menu admin">
+          <button
+            class="admin-tab active"
+            type="button"
+            onclick="showAdminTab('overview', this)"
+          >
+            <i class="fa-solid fa-gauge-high"></i>
+            Ringkasan
+          </button>
+
+          <button
+            class="admin-tab"
+            type="button"
+            onclick="showAdminTab('exams', this)"
+          >
+            <i class="fa-solid fa-file-circle-check"></i>
+            Data Ujian
+          </button>
+
+          <button
+            class="admin-tab"
+            type="button"
+            onclick="showAdminTab('questions', this)"
+          >
+            <i class="fa-solid fa-list-check"></i>
+            Bank Soal
+          </button>
+
+          <button
+            class="admin-tab"
+            type="button"
+            onclick="showAdminTab('students', this)"
+          >
+            <i class="fa-solid fa-users"></i>
+            Mahasiswa
+          </button>
+
+          <button
+            class="admin-tab"
+            type="button"
+            onclick="showAdminTab('settings', this)"
+          >
+            <i class="fa-solid fa-sliders"></i>
+            Pengaturan
+          </button>
+
+          <button
+            class="admin-tab"
+            type="button"
+            onclick="showAdminTab('results', this)"
+          >
+            <i class="fa-solid fa-chart-column"></i>
+            Rekap Nilai
+          </button>
+        </div>
+
+        <!-- ================= RINGKASAN ================= -->
+        <section class="admin-view" id="admin-view-overview">
+          <div class="admin-stat-grid">
+            <article class="admin-stat">
+              <span>Total ujian</span>
+              <strong id="stat-exams">0</strong>
+              <small>Jumlah ujian tersimpan</small>
+            </article>
+
+            <article class="admin-stat">
+              <span>Total soal</span>
+              <strong id="stat-questions">20</strong>
+              <small>Jumlah soal tersedia</small>
+            </article>
+
+            <article class="admin-stat">
+              <span>Mahasiswa</span>
+              <strong id="stat-students">0</strong>
+              <small>Jumlah peserta terdaftar</small>
+            </article>
+
+            <article class="admin-stat">
+              <span>Hasil ujian</span>
+              <strong id="stat-results">0</strong>
+              <small>Jumlah hasil pengerjaan</small>
+            </article>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <div>
+                <h3>Mulai kelola ujian</h3>
+                <p class="muted">
+                  Buat ujian, atur durasi, lalu masukkan soal.
+                </p>
+              </div>
+            </div>
+
+            <div class="quick-actions">
+              <button
+                class="btn-primary"
+                type="button"
+                onclick="showAdminTab('exams')"
+              >
+                <i class="fa-solid fa-plus"></i>
+                Buat ujian
+              </button>
+
+              <button
+                class="btn-secondary"
+                type="button"
+                onclick="showAdminTab('questions')"
+              >
+                <i class="fa-solid fa-file-import"></i>
+                Kelola bank soal
+              </button>
+
+              <button
+                class="btn-secondary"
+                type="button"
+                onclick="showAdminTab('students')"
+              >
+                <i class="fa-solid fa-users"></i>
+                Impor mahasiswa
+              </button>
+            </div>
+          </div>
+
+          <p class="form-footnote">
+            <i class="fa-solid fa-circle-info"></i>
+            Penyimpanan permanen memerlukan integrasi Firestore
+            pada fungsi pengelolaan data.
+          </p>
+        </section>
+
+        <!-- ================= DATA UJIAN ================= -->
+        <section
+          class="admin-view hidden"
+          id="admin-view-exams"
+        >
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <div>
+                <h3 id="exam-form-title">Buat ujian baru</h3>
+                <p class="muted">
+                  Atur nama, peserta, durasi, dan jadwal ujian.
+                </p>
+              </div>
+            </div>
+
+            <form
+              id="exam-form"
+              class="admin-form-grid"
+              onsubmit="saveExam(event)"
+            >
+              <input type="hidden" id="exam-edit-id">
+
+              <div class="form-field wide">
+                <label for="exam-title">Nama ujian</label>
+                <input
+                  id="exam-title"
+                  required
+                  placeholder="Contoh: Ujian Mikroprosesor"
+                >
+              </div>
+
+              <div class="form-field">
+                <label for="exam-class">Kelas peserta</label>
+                <select id="exam-class">
+                  <option value="B">Kelas B</option>
+                  <option value="E">Kelas E</option>
+                  <option value="Semua">Semua kelas</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="exam-duration">Durasi (menit)</label>
+                <input
+                  id="exam-duration"
+                  type="number"
+                  min="1"
+                  max="300"
+                  value="30"
+                  required
+                >
+              </div>
+
+              <div class="form-field">
+                <label for="exam-start">Jadwal mulai (opsional)</label>
+                <input id="exam-start" type="datetime-local">
+              </div>
+
+              <div class="form-field">
+                <label for="exam-end">Jadwal berakhir (opsional)</label>
+                <input id="exam-end" type="datetime-local">
+              </div>
+
+              <div class="form-field">
+                <label for="exam-count">Jumlah soal</label>
+                <input
+                  id="exam-count"
+                  type="number"
+                  min="1"
+                  max="200"
+                  value="20"
+                  required
+                >
+              </div>
+
+              <div class="form-field">
+                <label for="exam-status">Status</label>
+                <select id="exam-status">
+                  <option value="Draft">Draft</option>
+                  <option value="Aktif">Aktif</option>
+                  <option value="Ditutup">Ditutup</option>
+                </select>
+              </div>
+
+              <div class="form-actions wide">
+                <button class="btn-primary" type="submit">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  Simpan ujian
+                </button>
+
+                <button
+                  class="btn-secondary"
+                  type="button"
+                  onclick="resetExamForm()"
+                >
+                  Kosongkan
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <h3>Daftar ujian</h3>
+            </div>
+
+            <div class="table-wrap">
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>Nama ujian</th>
+                    <th>Kelas</th>
+                    <th>Durasi</th>
+                    <th>Soal</th>
+                    <th>Jadwal</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="exam-list-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= BANK SOAL ================= -->
+        <section
+          class="admin-view hidden"
+          id="admin-view-questions"
+        >
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <div>
+                <h3>Impor bank soal dari CSV</h3>
+                <p class="muted">
+                  Kolom: question, optionA, optionB, optionC,
+                  optionD, optionE, answer, points.
+                </p>
+              </div>
+            </div>
+
+            <input
+              id="question-csv"
+              type="file"
+              accept=".csv,text/csv"
+            >
+
+            <p class="form-footnote">
+              Kunci jawaban ditulis A, B, C, D, atau E.
+            </p>
+
+            <div class="form-actions">
+              <button
+                class="btn-secondary"
+                type="button"
+                onclick="downloadQuestionTemplate()"
+              >
+                Unduh template soal CSV
+              </button>
+
+              <button
+                class="btn-primary"
+                type="button"
+                onclick="importQuestionsCsv()"
+              >
+                <i class="fa-solid fa-file-arrow-up"></i>
+                Impor CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <h3>Tambah soal manual</h3>
+            </div>
+
+            <form
+              id="question-form"
+              class="admin-form-grid"
+              onsubmit="saveQuestion(event)"
+            >
+              <div class="form-field wide">
+                <label for="question-text">Pertanyaan</label>
+                <textarea
+                  id="question-text"
+                  rows="3"
+                  required
+                  placeholder="Tuliskan pertanyaan..."
+                ></textarea>
+              </div>
+
+              <div class="form-field">
+                <label for="option-a">Pilihan A</label>
+                <input id="option-a" required>
+              </div>
+
+              <div class="form-field">
+                <label for="option-b">Pilihan B</label>
+                <input id="option-b" required>
+              </div>
+
+              <div class="form-field">
+                <label for="option-c">Pilihan C</label>
+                <input id="option-c" required>
+              </div>
+
+              <div class="form-field">
+                <label for="option-d">Pilihan D</label>
+                <input id="option-d" required>
+              </div>
+
+              <div class="form-field">
+                <label for="option-e">Pilihan E</label>
+                <input id="option-e" required>
+              </div>
+
+              <div class="form-field">
+                <label for="question-answer">Kunci jawaban</label>
+                <select id="question-answer">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="question-points">Skor</label>
+                <input
+                  id="question-points"
+                  type="number"
+                  min="1"
+                  value="1"
+                >
+              </div>
+
+              <div class="form-actions wide">
+                <button class="btn-primary" type="submit">
+                  Simpan soal
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <h3>
+                Soal tersimpan
+                <span id="question-count-label" class="count-badge"></span>
+              </h3>
+
+              <button
+                class="btn-secondary"
+                type="button"
+                onclick="downloadQuestionsCsv()"
+              >
+                Ekspor CSV
+              </button>
+            </div>
+
+            <div id="question-list" class="question-admin-list"></div>
+          </div>
+        </section>
+
+        <!-- ================= MAHASISWA ================= -->
+        <section
+          class="admin-view hidden"
+          id="admin-view-students"
+        >
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <div>
+                <h3>Impor mahasiswa dari CSV</h3>
+                <p class="muted">
+                  Format kolom: name,nim,kelas.
+                  Contoh: Leo Michel,5243230041,B.
+                </p>
+              </div>
+            </div>
+
+            <input
+              id="student-csv"
+              type="file"
+              accept=".csv,text/csv"
+            >
+
+            <div class="form-actions">
+              <button
+                class="btn-primary"
+                type="button"
+                onclick="importStudentsCsv()"
+              >
+                <i class="fa-solid fa-file-arrow-up"></i>
+                Impor mahasiswa
+              </button>
+
+              <button
+                class="btn-secondary"
+                type="button"
+                onclick="downloadStudentTemplate()"
+              >
+                Unduh template CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <h3>Tambah mahasiswa</h3>
+            </div>
+
+            <form
+              id="student-form-admin"
+              class="admin-form-grid"
+              onsubmit="saveStudent(event)"
+            >
+              <div class="form-field">
+                <label for="student-name-admin">Nama lengkap</label>
+                <input id="student-name-admin" required>
+              </div>
+
+              <div class="form-field">
+                <label for="student-nim-admin">NIM</label>
+                <input
+                  id="student-nim-admin"
+                  required
+                  inputmode="numeric"
+                >
+              </div>
+
+              <div class="form-field">
+                <label for="student-class-admin">Kelas</label>
+                <input
+                  id="student-class-admin"
+                  type="text"
+                  placeholder="Contoh: B atau E"
+                  required
+                  maxlength="40"
+                >
+              </div>
+
+              <div class="form-actions wide">
+                <button class="btn-primary" type="submit">
+                  Tambah mahasiswa
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <h3>
+                Daftar mahasiswa
+                <span id="student-count-label" class="count-badge"></span>
+              </h3>
+
+              <button
+                class="btn-secondary"
+                type="button"
+                onclick="downloadStudentsCsv()"
+              >
+                Ekspor CSV
+              </button>
+            </div>
+
+            <div class="table-wrap">
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>NIM</th>
+                    <th>Kelas</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="student-list-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= PENGATURAN ================= -->
+        <section
+          class="admin-view hidden"
+          id="admin-view-settings"
+        >
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <div>
+                <h3>Pengaturan default ujian</h3>
+                <p class="muted">
+                  Nilai default untuk formulir pembuatan ujian.
+                </p>
+              </div>
+            </div>
+
+            <form
+              class="admin-form-grid"
+              onsubmit="saveSettings(event)"
+            >
+              <div class="form-field">
+                <label for="default-duration">Durasi default (menit)</label>
+                <input
+                  id="default-duration"
+                  type="number"
+                  min="1"
+                  max="300"
+                  value="30"
+                >
+              </div>
+
+              <div class="form-field">
+                <label for="default-questions">Jumlah soal default</label>
+                <input
+                  id="default-questions"
+                  type="number"
+                  min="1"
+                  max="200"
+                  value="20"
+                >
+              </div>
+
+              <div class="form-field">
+                <label for="pass-score">Nilai batas lulus</label>
+                <input
+                  id="pass-score"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="70"
+                >
+              </div>
+
+              <div class="form-actions wide">
+                <button class="btn-primary" type="submit">
+                  Simpan pengaturan
+                </button>
+              </div>
+            </form>
+
+            <p class="form-footnote">
+              Penyimpanan pengaturan ke Firestore memerlukan
+              integrasi pada JavaScript.
+            </p>
+          </div>
+        </section>
+
+        <!-- ================= REKAP NILAI ================= -->
+        <section
+          class="admin-view hidden"
+          id="admin-view-results"
+        >
+          <div class="admin-card">
+            <div class="admin-card-heading">
+              <div>
+                <h3>Rekap hasil ujian</h3>
+                <p class="muted">
+                  Rekap hasil pengerjaan peserta.
+                </p>
+              </div>
+
+              <div class="quick-actions">
+                <button
+                  class="btn-primary"
+                  type="button"
+                  onclick="downloadData()"
+                >
+                  <i class="fa-solid fa-file-csv"></i>
+                  Unduh CSV
+                </button>
+
+                <button
+                  class="btn-danger"
+                  type="button"
+                  onclick="clearAllData()"
+                >
+                  <i class="fa-regular fa-trash-can"></i>
+                  Hapus hasil demo
+                </button>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>No.</th>
+                    <th>Nama</th>
+                    <th>NIM</th>
+                    <th>Kelas</th>
+                    <th>Nilai</th>
+                    <th>Status</th>
+                    <th>Waktu</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>
+      © <span id="year"></span> Sistem Ujian Online · UNIMED
+    </span>
+    <span>Platform evaluasi akademik</span>
+  </footer>
+
+  <!-- ================= FIREBASE SDK ================= -->
+  <!-- SDK harus dimuat sebelum firebase-config.js -->
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+
+  <!-- Konfigurasi Firebase -->
+  <script src="firebase-config.js"></script>
+
+  <!-- JavaScript utama website -->
+  <script src="javascript/script.js"></script>
+</body>
+</html>
