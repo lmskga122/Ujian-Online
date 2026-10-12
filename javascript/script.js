@@ -152,7 +152,17 @@ if ($("year")) {
 // ============================================================
 // LOGIN MODE
 // ============================================================
+function setLoginMode(mode) {
+  console.log("setLoginMode dipanggil:", mode);
 
+  loginMode = mode;
+
+  $("student-tab")?.classList.toggle("active", mode === "student");
+  $("admin-tab")?.classList.toggle("active", mode === "admin");
+  $("student-form")?.classList.toggle("hidden", mode !== "student");
+  $("admin-form")?.classList.toggle("hidden", mode !== "admin");
+  $("login-message")?.classList.add("hidden");
+}
 function setLoginMode(mode) {
   loginMode = mode;
 
