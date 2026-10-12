@@ -1101,61 +1101,92 @@ function saveQuestion(event) {
   alert("Soal ditambahkan ke bank soal lokal.");
 }
 
-function renderAdminQuestions() {
-  const localList = readAdminData(
-    "questions",
-    questions.map((q, i) => ({
-      id: "sample_" + i,
-      question: q.q,
-      options: q.options,
-      answer: String.fromCharCode(65 + q.options.indexOf(q.a)),
-      points: 1,
-      sample: true
-    }))
-  );
+javascript
+async function renderAdminQuestions() {
+  const listElement = $("question-list");
+  const countElement = $("question-count-label");
 
-  // Samakan format soal lama dan baru.
-  const list = localList.map((q, i) => {
-    const question = q.question || q.pertanyaan || "";
-    const options = q.options || q.pilihan || [];
-    const answer = q.answer || q.menjawab || "";
-    const points = q.points ?? q.poin ?? 1;
+  if (!listElement) return;
 
-    return {
-      ...q,
-      id: q.id || q.pengenal || "local_" + i,
-      question,
-      options,
-      answer: String(answer).toUpperCase(),
-      points,
-      sample: q.sample === true
-    };
-  });
+  const db = window.firebaseServices?.db;
+  const auth = window.firebaseServices?.auth;
 
-  if ($("question-count-label")) {
-    $("question-count-label").textContent = list.length;
+  if (!db || !auth?.currentUser) {
+    listElement.innerHTML =
+      '<div class="admin-empty">Admin belum terhubung ke Firebase.</div>';
+    return;
   }
 
-  if (!$("question-list")) return;
+  try {
+    const token = await auth.currentUser.getIdTokenResult();
 
-  $("question-list").innerHTML = list.length
-    ? list.map((q, i) => `
+    if (token.claims.admin !== true) {
+      throw new Error("Akun tidak memiliki hak admin.");
+    }
+
+    listElement.innerHTML =
+      '<div class="admin-empty">Memuat bank soal dari Firebase...</div>';
+
+    const snapshot = await db.collection("bank_soal").get();
+
+    const list = snapshot.docs.map(function(doc) {
+      const data = doc.data();
+
+      const rawOptions = data.options || data.pilihan || [];
+      const options = Array.isArray(rawOptions)
+        ? rawOptions
+        : Object.values(rawOptions);
+
+      const answer = String(
+        data.answer || data.menjawab || data.jawaban || ""
+      ).trim();
+
+      return {
+        id: doc.id,
+        question: data.question || data.pertanyaan || data.q || "",
+        options: options,
+        answer: answer,
+        points: Number(data.points ?? data.poin ?? 1)
+      };
+    }).filter(function(q) {
+      return q.question && q.options.length >= 2;
+    });
+
+    if (countElement) {
+      countElement.textContent = list.length;
+    }
+
+    if (list.length === 0) {
+      listElement.innerHTML =
+        '<div class="admin-empty">Belum ada soal di Firestore.</div>';
+      return;
+    }
+
+    listElement.innerHTML = list.map(function(q, i) {
+      return `
         <article class="question-admin-item">
           <strong>${i + 1}. ${escapeHtml(q.question)}</strong>
           <small>
             Kunci: ${escapeHtml(q.answer || "-")}
-            · Skor: ${Number(q.points) || 1}
-            ${q.sample ? " · Soal contoh" : ""}
+            · Skor: ${q.points}
           </small>
-          ${
-            q.sample
-              ? ""
-              : `<div><button class="btn-danger small-btn"
-                   onclick="deleteQuestion('${q.id}')">Hapus soal</button></div>`
-          }
         </article>
-      `).join("")
-    : `<div class="admin-empty">Belum ada soal.</div>`;
+      `;
+    }).join("");
+
+    console.log(
+      "Jumlah soal yang dibaca dari Firestore:",
+      list.length
+    );
+
+  } catch (error) {
+    console.error("Gagal memuat bank soal:", error);
+
+    listElement.innerHTML =
+      '<div class="admin-empty">Gagal memuat bank soal: ' +
+      escapeHtml(error.message) +
+      '</div>';
+  }
 }
 
 function deleteQuestion(id) {
