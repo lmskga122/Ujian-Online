@@ -1487,7 +1487,6 @@ async function saveStudent(event) {
   }
 }
 
-
 async function renderStudents() {
   const tbody = $("student-list-body");
   const countLabel = $("student-count-label");
