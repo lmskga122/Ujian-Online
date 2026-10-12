@@ -1344,22 +1344,75 @@ function saveStudent(event) {
   refreshAdminStats();
 }
 
-function renderStudents() {
-  const list = readAdminData("students");
+javascript
+async function renderStudents() {
+  const tbody = $("student-list-body");
+  const countLabel = $("student-count-label");
 
-  if ($("student-count-label")) $("student-count-label").textContent = list.length;
-  if (!$("student-list-body")) return;
+  if (!tbody) return;
 
-  $("student-list-body").innerHTML = list.length
-    ? list.map(s => `
-        <tr>
-          <td>${escapeHtml(s.name)}</td>
-          <td>${escapeHtml(s.nim)}</td>
-          <td>${escapeHtml(s.kelas)}</td>
-          <td><button class="btn-danger small-btn" onclick="deleteStudent('${s.nim}')">Hapus</button></td>
-        </tr>
-      `).join("")
-    : `<tr><td colspan="4"><div class="admin-empty">Belum ada mahasiswa. Impor CSV name,nim,kelas.</div></td></tr>`;
+  try {
+    const user = firebase.auth().currentUser;
+
+    if (!user) {
+      tbody.innerHTML =
+        '<tr><td colspan="4">Admin belum login.</td></tr>';
+      return;
+    }
+
+    const token = await user.getIdTokenResult();
+
+    if (token.claims.admin !== true) {
+      throw new Error("Akun tidak memiliki hak admin.");
+    }
+
+    tbody.innerHTML =
+      '<tr><td colspan="4">Memuat data mahasiswa...</td></tr>';
+
+    const snapshot = await firebase.firestore()
+      .collection("daftar_mahasiswa")
+      .get();
+
+    const students = snapshot.docs.map(function(doc) {
+      const data = doc.data();
+
+      return {
+        name: data.nama || data.name || "",
+        nim: String(data.nim || doc.id),
+        kelas: data.kelas || ""
+      };
+    });
+
+    if (countLabel) {
+      countLabel.textContent = students.length;
+    }
+
+    if (students.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="4"><div class="admin-empty">Belum ada mahasiswa.</div></td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = students.map(function(s) {
+      return '<tr>' +
+        '<td>' + escapeHtml(s.name) + '</td>' +
+        '<td>' + escapeHtml(s.nim) + '</td>' +
+        '<td>' + escapeHtml(s.kelas) + '</td>' +
+        '<td><button class="btn-danger small-btn" onclick="deleteStudent(\'' +
+        escapeHtml(s.nim) + '\')">Hapus</button></td>' +
+        '</tr>';
+    }).join("");
+
+  } catch (error) {
+    console.error("Gagal memuat mahasiswa:", error);
+
+    if (countLabel) countLabel.textContent = "—";
+
+    tbody.innerHTML =
+      '<tr><td colspan="4"><div class="admin-empty">Gagal memuat data mahasiswa: ' +
+      escapeHtml(error.message) +
+      '</div></td></tr>';
+  }
 }
 
 function deleteStudent(nim) {
