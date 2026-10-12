@@ -1101,7 +1101,6 @@ function saveQuestion(event) {
   alert("Soal ditambahkan ke bank soal lokal.");
 }
 
-javascript
 async function renderAdminQuestions() {
   const listElement = $("question-list");
   const countElement = $("question-count-label");
