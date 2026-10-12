@@ -1319,7 +1319,8 @@ async function importStudentsCsv() {
   }
 }
 
-function saveStudent(event) {
+javascript
+async function saveStudent(event) {
   event.preventDefault();
 
   const name = $("student-name-admin").value.trim();
@@ -1331,18 +1332,52 @@ function saveStudent(event) {
     return;
   }
 
-  const list = readAdminData("students");
-  const index = list.findIndex(s => String(s.nim) === nim);
-  const student = { name, nim, kelas };
+  try {
+    const user = firebase.auth().currentUser;
 
-  if (index >= 0) list[index] = student;
-  else list.push(student);
+    if (!user) {
+      alert("Silakan login sebagai admin terlebih dahulu.");
+      return;
+    }
 
-  writeAdminData("students", list);
-  event.target.reset();
-  renderStudents();
-  refreshAdminStats();
+    const token = await user.getIdTokenResult();
+
+    if (token.claims.admin !== true) {
+      alert("Akun ini tidak memiliki hak admin.");
+      return;
+    }
+
+    const db = firebase.firestore();
+    const studentRef = db.collection("daftar_mahasiswa").doc(nim);
+
+    await studentRef.set({
+      nama: name,
+      nim: nim,
+      kelas: kelas,
+      diperbaruiPada:
+        firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    event.target.reset();
+
+    await renderStudents();
+
+    if (typeof refreshAdminStats === "function") {
+      await refreshAdminStats();
+    }
+
+    alert("Data mahasiswa berhasil disimpan ke Firebase.");
+
+  } catch (error) {
+    console.error("Gagal menyimpan mahasiswa:", error);
+
+    alert(
+      "Gagal menyimpan mahasiswa ke Firebase: " +
+      error.message
+    );
+  }
 }
+
 
 javascript
 async function renderStudents() {
