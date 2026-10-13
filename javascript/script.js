@@ -352,28 +352,53 @@ async function startExam() {
   }
 
   // Muat soal terlebih dahulu.
-  const loaded = await loadQuestionsFromFirebase();
+ const loaded = await loadQuestionsFromFirebase();
 
-  if (!loaded || !Array.isArray(questions) || questions.length === 0) {
-    return;
-  }
+if (!loaded || !Array.isArray(questions) || questions.length === 0) {
+  return;
+}
+
+// Ambil pengaturan dari admin.
+const settings = readAdminData("settings", {
+  duration: 30,
+  count: 20,
+  pass: 70
+});
+
+// Pilih soal sesuai jumlah pengaturan admin.
+const bankSoal = [...questions];
+shuffleArray(bankSoal);
+
+const jumlahSoal = Math.min(
+  Math.max(1, Number(settings.count) || 20),
+  bankSoal.length
+);
+
+questions = bankSoal.slice(0, jumlahSoal);
+
+// Atur durasi ujian dalam detik.
+timeLeft = Math.max(
+  1,
+  Number(settings.duration) || 30
+) * 60;
+
+// Simpan nilai minimum kelulusan.
+window.examPassScore = Math.min(
+  100,
+  Math.max(0, Number(settings.pass) || 70)
+);
+
 
   // Mulai ujian baru.
   currentIdx = 0;
   userAnswers = {};
-
-  const settings = readAdminData("settings", {
-    duration: 30,
-    count: 20,
-    pass: 70
-  });
-
-  timeLeft = Math.max(1, Number(settings.duration) || 30) * 60;
   tabViolationCount = 0;
 
+  // Acak urutan soal yang sudah dipilih.
   questionOrder = questions.map((_, i) => i);
   shuffleArray(questionOrder);
 
+  // Acak pilihan jawaban setiap soal.
   shuffledOptions = {};
 
   questions.forEach((q, i) => {
@@ -384,8 +409,6 @@ async function startExam() {
 
     shuffleArray(shuffledOptions[i]);
   });
-
-  submitting = false;
 
   // Tampilkan halaman ujian.
   $("login-section")?.classList.add("hidden");
@@ -525,15 +548,34 @@ function renderNavigation() {
   }).join("");
 }
 
+
 function saveAnswer(optionIndex) {
   const actual = actualQuestionIndex(currentIdx);
-  const option = (shuffledOptions[actual] || [])[optionIndex];
+  const options = shuffledOptions[actual] || [];
+  const option = options[optionIndex];
 
-  if (!option) return;
+  if (!option) {
+    console.error("Pilihan jawaban tidak ditemukan.", {
+      currentIdx,
+      actual,
+      optionIndex
+    });
+    return;
+  }
 
+  // Simpan teks jawaban berdasarkan indeks soal sebenarnya.
   userAnswers[actual] = option.text;
+
+  // Simpan jawaban segera ke browser.
   persistDraft();
+
+  // Perbarui status navigasi soal.
   renderNavigation();
+
+  console.log("Jawaban tersimpan:", {
+    soal: currentIdx + 1,
+    jawaban: userAnswers[actual]
+  });
 }
 
 function changeQuestion(step) {
@@ -656,11 +698,39 @@ function finishExam(status) {
     tabViolations: tabViolationCount
   };
 
-  const history = readHistory();
-  history.push(record);
 
-  localStorage.setItem("cbt_unimed_results", JSON.stringify(history));
+const history = readHistory();
+
+// Perbarui catatan peserta yang sudah ada,
+// jangan membuat catatan ganda untuk NIM yang sama.
+const existingIndex = history.findIndex(
+  item => String(item.nim || "").trim() === currentNim
+);
+
+if (existingIndex >= 0) {
+  history[existingIndex] = record;
+} else {
+  history.push(record);
+}
+
+try {
+  localStorage.setItem(
+    "cbt_unimed_results",
+    JSON.stringify(history)
+  );
   localStorage.removeItem(DRAFT_KEY);
+} catch (error) {
+  console.error("Gagal menyimpan hasil ujian:", error);
+  alert("Hasil ujian gagal disimpan di browser ini.");
+  submitting = false;
+  return;
+}
+
+// Perbarui tampilan Rekap Nilai jika tersedia.
+loadLeaderboard();
+if (typeof refreshAdminStats === "function") {
+  refreshAdminStats();
+}
 
   $("exam-section")?.classList.add("hidden");
   $("result-section")?.classList.remove("hidden");
