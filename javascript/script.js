@@ -343,13 +343,19 @@ async function startExam() {
       showLoginMessage("Kelas belum terdaftar. Hubungi administrator.");
       return;
     }
-  } catch (error) {
-    console.error("Validasi mahasiswa gagal:", error);
-    showLoginMessage(
-      "Gagal memeriksa data mahasiswa. Periksa koneksi Firebase."
-    );
-    return;
-  }
+} catch (error) {
+  console.error("Validasi mahasiswa gagal:", error);
+  console.error("Kode error:", error.code);
+  console.error("Pesan error:", error.message);
+
+  showLoginMessage(
+    `Gagal memeriksa data mahasiswa: ${
+      error.code || error.message || "Kesalahan tidak diketahui"
+    }`
+  );
+
+  return;
+}
 
   // Muat soal terlebih dahulu.
  const loaded = await loadQuestionsFromFirebase();
