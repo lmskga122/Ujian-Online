@@ -88,3 +88,119 @@
     font-size: 9px;
   }
 }
+
+
+
+/* =========================================================
+   PERLINDUNGAN AREA UJIAN
+   ========================================================= */
+
+/* Membatasi seleksi teks pada elemen ujian yang digunakan */
+#exam-section,
+#exam-section .exam-grid,
+#exam-section .exam-sidebar,
+#exam-section .question-panel,
+#exam-section .question-box,
+#exam-section .question-topline,
+#exam-section .question-number,
+#exam-section .main-question,
+#exam-section .option-list,
+#exam-section .option-item,
+#exam-section .option-item span,
+#exam-section .question-nav,
+#exam-section .exam-bottom {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none;
+}
+
+/* Mencegah drag gambar di area ujian */
+#exam-section img {
+  -webkit-user-drag: none;
+}
+
+/* Pilihan jawaban tetap dapat digunakan */
+#exam-section .option-item {
+  cursor: pointer;
+}
+
+#exam-section .option-item input {
+  cursor: pointer;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* =========================================================
+   WATERMARK IDENTITAS MAHASISWA
+   HTML dan JavaScript tetap diperlukan agar tampil
+   ========================================================= */
+
+#exam-section {
+  position: relative;
+}
+
+#exam-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+  opacity: 0.12;
+  color: #64748b;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+#exam-watermark.active {
+  display: block;
+}
+
+#exam-watermark span {
+  position: absolute;
+  display: block;
+  transform: rotate(-25deg);
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Watermark pada layar kecil */
+@media (max-width: 680px) {
+  #exam-watermark {
+    font-size: 12px;
+  }
+}
+
+/* Watermark identitas pada area ujian */
+#exam-section {
+  position: relative;
+}
+
+#exam-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+  opacity: 0.12;
+  color: #64748b;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#exam-watermark.active {
+  display: block;
+}
+
+#exam-watermark span {
+  position: absolute;
+  transform: rotate(-25deg);
+  white-space: nowrap;
+}
+/* Hindari seleksi teks pada halaman ujian */
+#exam-section img {
+  -webkit-user-drag: none;
+}
