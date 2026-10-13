@@ -1046,33 +1046,35 @@ function enterExamFullscreen() {
     });
 }
 
+
 function handleExamViolation(reason) {
   if (!examIsRunning() || violationDialogOpen) return;
 
   violationDialogOpen = true;
+
+  // Simpan jawaban terbaru sebelum menampilkan konfirmasi.
   persistDraft();
 
   const message =
     reason === "fullscreen"
       ? "DILARANG KELUAR DARI MODE FULLSCREEN.\n\n" +
-        "Jika memilih YA, jawaban akan dikirim dan ujian diakhiri.\n\n" +
-        "Kirim jawaban sekarang?"
+        "Pilih OK untuk mengirim jawaban dan mengakhiri ujian."
       : "DILARANG BERPINDAH TAB.\n\n" +
-        "Jika memilih YA, jawaban akan dikirim dan ujian diakhiri.\n\n" +
-        "Kirim jawaban sekarang?";
+        "Pilih OK untuk mengirim jawaban dan mengakhiri ujian.";
 
   const submitNow = window.confirm(message);
   violationDialogOpen = false;
 
-  if (submitNow) {
-    finishExam(
-      reason === "fullscreen"
-        ? "Diakhiri: keluar dari fullscreen"
-        : "Diakhiri: berpindah tab"
-    );
-    return;
-  }
+if (submitNow) {
+  finishExam(
+    reason === "fullscreen"
+      ? "Diakhiri: keluar dari fullscreen"
+      : "Diakhiri: berpindah tab"
+  );
+  return;
+}
 
+  // Jika peserta memilih Batal, ujian tetap berjalan.
   persistDraft();
 
   ignoreNextVisibilityEvent = true;
@@ -1091,7 +1093,11 @@ document.addEventListener("visibilitychange", () => {
     return;
   }
 
-  handleExamViolation("tab");
+  persistDraft();
+
+  finishExam("Diakhiri: keluar dari website");
+
+  alert("Anda keluar dari website, jawaban telah dikirim.");
 });
 
 document.addEventListener("fullscreenchange", () => {
@@ -2154,4 +2160,13 @@ document.addEventListener("DOMContentLoaded", () => {
       ? DRAFT_KEY
       : "cbt_unimed_active_draft"
   );
+});
+// Deteksi ketika peserta meninggalkan tab atau halaman ujian.
+document.addEventListener("visibilitychange", () => {
+  if (
+    document.visibilityState === "hidden" &&
+    isExamActive()
+  ) {
+    finishExam("Peserta meninggalkan halaman ujian");
+  }
 });
