@@ -141,10 +141,10 @@
         </div>
 
         <!-- Login Mahasiswa -->
-        <form
-          id="student-form"
-          onsubmit="event.preventDefault(); startExam();"
-        >
+     <form
+  id="student-form"
+  onsubmit="event.preventDefault(); enterExamFullscreen().then(() => startExam());"
+>
           <label for="username">Nama lengkap</label>
 
           <div class="field">
