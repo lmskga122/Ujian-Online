@@ -118,7 +118,7 @@ async function loadQuestionsFromFirebase() {
 let currentIdx = 0;
 let userAnswers = {};
 let timer = null;
-let timeLeft = 20 * 60;
+let timeLeft = 0;
 let questionOrder = [];
 let shuffledOptions = {};
 let tabViolationCount = 0;
@@ -295,7 +295,11 @@ async function checkAdmin(event) {
 // Ini belum melakukan validasi terhadap daftar Firestore.
 // ============================================================
 
+
 async function startExam() {
+  // Selalu mulai sesi baru; jangan pulihkan sesi lama.
+  localStorage.removeItem(DRAFT_KEY);
+
   currentUser = $("username")?.value.trim() || "";
   currentNim = $("student-nim")?.value.trim() || "";
 
@@ -304,7 +308,7 @@ async function startExam() {
     return;
   }
 
-  // Validasi mahasiswa berdasarkan NIM di Firebase.
+  // Validasi nama, NIM, dan kelas dari Firebase.
   try {
     const db = window.firebaseServices?.db;
 
@@ -319,9 +323,7 @@ async function startExam() {
       .get();
 
     if (snapshot.empty) {
-      showLoginMessage(
-        "NIM tidak terdaftar. Periksa kembali NIM kamu."
-      );
+      showLoginMessage("NIM tidak terdaftar. Periksa kembali NIM kamu.");
       return;
     }
 
@@ -330,21 +332,15 @@ async function startExam() {
       mahasiswa.nama || mahasiswa.name || ""
     ).trim();
 
-    if (
-      namaTerdaftar.toLowerCase() !== currentUser.toLowerCase()
-    ) {
-      showLoginMessage(
-        "Nama tidak sesuai dengan NIM yang terdaftar."
-      );
+    if (namaTerdaftar.toLowerCase() !== currentUser.toLowerCase()) {
+      showLoginMessage("Nama tidak sesuai dengan NIM yang terdaftar.");
       return;
     }
 
     userClass = String(mahasiswa.kelas || "").trim();
 
     if (!userClass) {
-      showLoginMessage(
-        "Kelas belum terdaftar. Hubungi administrator."
-      );
+      showLoginMessage("Kelas belum terdaftar. Hubungi administrator.");
       return;
     }
   } catch (error) {
@@ -355,17 +351,24 @@ async function startExam() {
     return;
   }
 
-  // Muat soal dari Firebase.
+  // Muat soal terlebih dahulu.
   const loaded = await loadQuestionsFromFirebase();
 
-  if (!loaded) {
+  if (!loaded || !Array.isArray(questions) || questions.length === 0) {
     return;
   }
 
+  // Mulai ujian baru.
   currentIdx = 0;
   userAnswers = {};
-  timeLeft = 20 * 60;
-  submitting = false;
+
+  const settings = readAdminData("settings", {
+    duration: 30,
+    count: 20,
+    pass: 70
+  });
+
+  timeLeft = Math.max(1, Number(settings.duration) || 30) * 60;
   tabViolationCount = 0;
 
   questionOrder = questions.map((_, i) => i);
@@ -382,8 +385,9 @@ async function startExam() {
     shuffleArray(shuffledOptions[i]);
   });
 
-  restoreDraft();
+  submitting = false;
 
+  // Tampilkan halaman ujian.
   $("login-section")?.classList.add("hidden");
   $("result-section")?.classList.add("hidden");
   $("exam-section")?.classList.remove("hidden");
@@ -397,9 +401,47 @@ async function startExam() {
   renderNavigation();
   updateTimerDisplay();
   startTimer();
+  persistDraft();
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+// Blokir menu klik kanan pada area ujian
+document.addEventListener("contextmenu", event => {
+  if (isExamActive() && event.target.closest("#exam-section")) {
+    event.preventDefault();
+  }
+});
+
+// Blokir seleksi teks dengan mouse pada area ujian
+document.addEventListener("selectstart", event => {
+  if (isExamActive() && event.target.closest("#exam-section")) {
+    event.preventDefault();
+  }
+});
+
+// Blokir penyalinan melalui shortcut keyboard
+document.addEventListener("keydown", event => {
+  if (!isExamActive()) return;
+
+  const key = event.key.toLowerCase();
+
+  if (
+    (event.ctrlKey || event.metaKey) &&
+    ["c", "x"].includes(key)
+  ) {
+    if (event.target.closest("#exam-section")) {
+      event.preventDefault();
+    }
+  }
+});
+
+// Blokir event salin pada area ujian
+document.addEventListener("copy", event => {
+  if (isExamActive() && event.target.closest("#exam-section")) {
+    event.preventDefault();
+  }
+});
 
 // ============================================================
 // SOAL ACAK
@@ -529,32 +571,11 @@ function persistDraft() {
   }
 }
 
-function restoreDraft() {
-  try {
-    const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
 
-    if (
-      draft &&
-      draft.name === currentUser &&
-      draft.nim === currentNim &&
-      draft.class === userClass &&
-      Array.isArray(draft.questionOrder) &&
-      draft.questionOrder.length === questions.length
-    ) {
-      if (confirm("Ditemukan sesi sebelumnya. Pulihkan jawaban dan sisa waktu?")) {
-        userAnswers = draft.answers || {};
-        timeLeft = Number(draft.timeLeft) || 20 * 60;
-        currentIdx = Math.min(Number(draft.currentIdx) || 0, questions.length - 1);
-        questionOrder = draft.questionOrder;
-        shuffledOptions = draft.shuffledOptions || shuffledOptions;
-        tabViolationCount = Number(draft.tabViolationCount) || 0;
-      } else {
-        localStorage.removeItem(DRAFT_KEY);
-      }
-    }
-  } catch (error) {
-    console.warn("Draf tidak dapat dipulihkan.", error);
-  }
+
+async function resumeExamAfterRefresh() {
+  // Sesi ujian tidak boleh dipulihkan setelah refresh.
+  localStorage.removeItem(DRAFT_KEY);
 }
 
 function startAutosave() {
@@ -912,12 +933,109 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+
 window.addEventListener("beforeunload", event => {
   if (!$("exam-section")?.classList.contains("hidden") && !submitting) {
     persistDraft();
     event.preventDefault();
     event.returnValue = "";
   }
+});
+
+
+/* ============================================================
+   DETEKSI PELANGGARAN UJIAN
+   ============================================================ */
+
+let violationDialogOpen = false;
+let ignoreNextVisibilityEvent = false;
+let fullscreenViolationActive = false;
+
+function examIsRunning() {
+  return (
+    !$("exam-section")?.classList.contains("hidden") &&
+    !submitting
+  );
+}
+
+function enterExamFullscreen() {
+  if (document.fullscreenElement) {
+    return Promise.resolve(true);
+  }
+
+  if (!document.documentElement.requestFullscreen) {
+    console.warn("Browser tidak mendukung fullscreen.");
+    return Promise.resolve(false);
+  }
+
+  return document.documentElement.requestFullscreen()
+    .then(() => true)
+    .catch(error => {
+      console.warn("Fullscreen gagal diaktifkan:", error);
+      return false;
+    });
+}
+
+function handleExamViolation(reason) {
+  if (!examIsRunning() || violationDialogOpen) return;
+
+  violationDialogOpen = true;
+  persistDraft();
+
+  const message =
+    reason === "fullscreen"
+      ? "DILARANG KELUAR DARI MODE FULLSCREEN.\n\n" +
+        "Jika memilih YA, jawaban akan dikirim dan ujian diakhiri.\n\n" +
+        "Kirim jawaban sekarang?"
+      : "DILARANG BERPINDAH TAB.\n\n" +
+        "Jika memilih YA, jawaban akan dikirim dan ujian diakhiri.\n\n" +
+        "Kirim jawaban sekarang?";
+
+  const submitNow = window.confirm(message);
+  violationDialogOpen = false;
+
+  if (submitNow) {
+    finishExam(
+      reason === "fullscreen"
+        ? "Diakhiri: keluar dari fullscreen"
+        : "Diakhiri: berpindah tab"
+    );
+    return;
+  }
+
+  persistDraft();
+
+  ignoreNextVisibilityEvent = true;
+  window.setTimeout(() => {
+    ignoreNextVisibilityEvent = false;
+  }, 1000);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (
+    document.visibilityState !== "hidden" ||
+    !examIsRunning() ||
+    violationDialogOpen ||
+    ignoreNextVisibilityEvent
+  ) {
+    return;
+  }
+
+  handleExamViolation("tab");
+});
+
+document.addEventListener("fullscreenchange", () => {
+  if (!examIsRunning() || violationDialogOpen) return;
+
+  if (document.fullscreenElement) {
+    fullscreenViolationActive = false;
+    return;
+  }
+
+  if (fullscreenViolationActive) return;
+
+  fullscreenViolationActive = true;
+  handleExamViolation("fullscreen");
 });
 
 // ============================================================
@@ -1015,88 +1133,198 @@ async function refreshAdminStats() {
 // MANAJEMEN UJIAN
 // ============================================================
 
-function saveExam(event) {
+
+async function saveExam(event) {
   event.preventDefault();
 
-  const list = readAdminData("exams");
+  const db = window.firebaseServices?.db;
+  const auth = window.firebaseServices?.auth;
+
+  if (!db || !auth?.currentUser) {
+    alert("Firebase belum terhubung atau admin belum login.");
+    return;
+  }
+
   const id = $("exam-edit-id").value || ("exam_" + Date.now());
 
   const item = {
-    id,
     title: $("exam-title").value.trim(),
     kelas: $("exam-class").value.trim(),
-    duration: Math.max(1, Number($("exam-duration").value) || 30),
+    duration: Math.max(1, Number($("exam-duration").value) || 45),
     start: $("exam-start").value,
     end: $("exam-end").value,
-    count: Math.max(1, Number($("exam-count").value) || 20),
+    count: Math.max(1, Number($("exam-count").value) || 30),
     status: $("exam-status").value,
-    updatedAt: new Date().toISOString()
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
-  const idx = list.findIndex(x => x.id === id);
+  if (!item.title || !item.kelas) {
+    alert("Judul ujian dan kelas wajib diisi.");
+    return;
+  }
 
-  if (idx >= 0) list[idx] = item;
-  else list.push(item);
+  try {
+    const token = await auth.currentUser.getIdTokenResult(true);
 
-  writeAdminData("exams", list);
-  resetExamForm();
-  renderExams();
-  refreshAdminStats();
+    if (token.claims.admin !== true) {
+      alert("Akun ini tidak memiliki hak admin.");
+      return;
+    }
 
-  alert("Ujian disimpan di browser ini. Belum disimpan ke Firestore.");
+    await db.collection("ujian").doc(id).set(item, { merge: true });
+
+    alert("Ujian berhasil disimpan ke Firestore.");
+
+    resetExamForm();
+    await renderExams();
+    await refreshAdminStats();
+
+  } catch (error) {
+    console.error("Gagal menyimpan ujian:", error);
+
+    alert(
+      "Ujian gagal disimpan ke Firestore.\n" +
+      (error.message || "Periksa koneksi dan izin Firebase.")
+    );
+  }
 }
 
-function renderExams() {
-  const list = readAdminData("exams");
-  if (!$("exam-list-body")) return;
+async function renderExams() {
+  const db = window.firebaseServices?.db;
+  const auth = window.firebaseServices?.auth;
+  const body = $("exam-list-body");
 
-  $("exam-list-body").innerHTML = list.length
-    ? list.map(x => `
-        <tr>
-          <td>${escapeHtml(x.title)}</td>
-          <td>${escapeHtml(x.kelas)}</td>
-          <td>${x.duration} menit</td>
-          <td>${x.count}</td>
-          <td>${escapeHtml(x.start || "-")}</td>
-          <td>${escapeHtml(x.status)}</td>
-          <td>
-            <button class="btn-secondary small-btn" onclick="editExam('${x.id}')">Edit</button>
-            <button class="btn-danger small-btn" onclick="deleteExam('${x.id}')">Hapus</button>
-          </td>
-        </tr>
-      `).join("")
-    : `<tr><td colspan="7"><div class="admin-empty">Belum ada ujian.</div></td></tr>`;
+  if (!body) return;
+
+  if (!db || !auth?.currentUser) {
+    body.innerHTML =
+      '<tr><td colspan="7">Firebase atau sesi admin belum tersedia.</td></tr>';
+    return;
+  }
+
+  try {
+    const token = await auth.currentUser.getIdTokenResult();
+
+    if (token.claims.admin !== true) {
+      throw new Error("Akun tidak memiliki hak admin.");
+    }
+
+    const snapshot = await db.collection("ujian").get();
+
+    const exams = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    body.innerHTML = exams.length
+      ? exams.map(x => `
+          <tr>
+            <td>${escapeHtml(x.title || "")}</td>
+            <td>${escapeHtml(x.kelas || "")}</td>
+            <td>${Number(x.duration) || 45} menit</td>
+            <td>${Number(x.count) || 30}</td>
+            <td>${escapeHtml(x.start || "-")}</td>
+            <td>${escapeHtml(x.status || "-")}</td>
+            <td>
+              <button
+                type="button"
+                class="btn-secondary small-btn"
+                onclick="editExam('${x.id}')">
+                Edit
+              </button>
+              <button
+                type="button"
+                class="btn-danger small-btn"
+                onclick="deleteExam('${x.id}')">
+                Hapus
+              </button>
+            </td>
+          </tr>
+        `).join("")
+      : '<tr><td colspan="7"><div class="admin-empty">Belum ada ujian.</div></td></tr>';
+
+  } catch (error) {
+    console.error("Gagal memuat daftar ujian:", error);
+    body.innerHTML =
+      '<tr><td colspan="7">Gagal memuat ujian. Periksa izin Firestore.</td></tr>';
+  }
 }
 
-function editExam(id) {
-  const x = readAdminData("exams").find(v => v.id === id);
-  if (!x) return;
+async function editExam(id) {
+  const db = window.firebaseServices?.db;
+  if (!db) return;
 
-  $("exam-edit-id").value = x.id;
-  $("exam-title").value = x.title;
-  $("exam-class").value = x.kelas;
-  $("exam-duration").value = x.duration;
-  $("exam-start").value = x.start || "";
-  $("exam-end").value = x.end || "";
-  $("exam-count").value = x.count;
-  $("exam-status").value = x.status;
+  try {
+    const doc = await db.collection("ujian").doc(id).get();
 
-  if ($("exam-form-title")) $("exam-form-title").textContent = "Edit ujian";
+    if (!doc.exists) {
+      alert("Data ujian tidak ditemukan.");
+      return;
+    }
 
-  $("exam-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const x = doc.data();
+
+    $("exam-edit-id").value = doc.id;
+    $("exam-title").value = x.title || "";
+    $("exam-class").value = x.kelas || "";
+    $("exam-duration").value = x.duration || 45;
+    $("exam-start").value = x.start || "";
+    $("exam-end").value = x.end || "";
+    $("exam-count").value = x.count || 30;
+    $("exam-status").value = x.status || "Aktif";
+
+    if ($("exam-form-title")) {
+      $("exam-form-title").textContent = "Edit ujian";
+    }
+
+    $("exam-form")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+
+  } catch (error) {
+    console.error("Gagal membuka ujian:", error);
+    alert("Gagal membuka data ujian. Periksa izin Firestore.");
+  }
 }
 
-function deleteExam(id) {
-  if (!confirm("Hapus konfigurasi ujian ini?")) return;
+async function deleteExam(id) {
+  if (!confirm("Hapus ujian ini dari Firestore?")) return;
 
-  writeAdminData("exams", readAdminData("exams").filter(x => x.id !== id));
-  renderExams();
-  refreshAdminStats();
+  const db = window.firebaseServices?.db;
+  const auth = window.firebaseServices?.auth;
+
+  if (!db || !auth?.currentUser) {
+    alert("Admin belum login.");
+    return;
+  }
+
+  try {
+    const token = await auth.currentUser.getIdTokenResult();
+
+    if (token.claims.admin !== true) {
+      throw new Error("Akun tidak memiliki hak admin.");
+    }
+
+    await db.collection("ujian").doc(id).delete();
+
+    alert("Ujian berhasil dihapus.");
+    await renderExams();
+    await refreshAdminStats();
+
+  } catch (error) {
+    console.error("Gagal menghapus ujian:", error);
+    alert("Gagal menghapus ujian: " + error.message);
+  }
 }
+
 
 function resetExamForm() {
   $("exam-form")?.reset();
-  if ($("exam-edit-id")) $("exam-edit-id").value = "";
+
+  if ($("exam-edit-id")) {
+    $("exam-edit-id").value = "";
+  }
 
   const settings = readAdminData("settings", {
     duration: 30,
@@ -1104,9 +1332,17 @@ function resetExamForm() {
     pass: 70
   });
 
-  if ($("exam-duration")) $("exam-duration").value = settings.duration || 30;
-  if ($("exam-count")) $("exam-count").value = settings.count || 20;
-  if ($("exam-form-title")) $("exam-form-title").textContent = "Buat ujian baru";
+  if ($("exam-duration")) {
+    $("exam-duration").value = settings.duration ?? 30;
+  }
+
+  if ($("exam-count")) {
+    $("exam-count").value = settings.count ?? 20;
+  }
+
+  if ($("exam-form-title")) {
+    $("exam-form-title").textContent = "Buat ujian baru";
+  }
 }
 
 // ============================================================
@@ -1779,3 +2015,73 @@ function saveSettings(event) {
 
   alert("Pengaturan tersimpan di browser ini, belum ke Firestore.");
 }
+
+
+/* ============================================================
+   PEMULIHAN OTOMATIS SETELAH REFRESH
+   ============================================================ */
+
+async function autoResumeSavedExam() {
+  const examSection = $("exam-section");
+
+  // Jangan menimpa sesi yang sedang berjalan.
+  if (
+    !examSection ||
+    !examSection.classList.contains("hidden")
+  ) {
+    return;
+  }
+
+  let draft;
+
+  try {
+    draft = JSON.parse(
+      localStorage.getItem(DRAFT_KEY) || "null"
+    );
+  } catch (error) {
+    console.error("Gagal membaca sesi ujian:", error);
+    return;
+  }
+
+  if (
+    !draft ||
+    !draft.name ||
+    !draft.nim ||
+    !draft.class ||
+    !Array.isArray(draft.questionOrder) ||
+    !draft.questionOrder.length ||
+    Number(draft.timeLeft) <= 0
+  ) {
+    return;
+  }
+}
+
+/* =========================================================
+   TAMPILAN AWAL HALAMAN
+   Halaman baru selalu dimulai dari login.
+   Tidak memulihkan sesi ujian sebelumnya.
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+  const loginSection = document.getElementById("login-section");
+  const examSection = document.getElementById("exam-section");
+  const resultSection = document.getElementById("result-section");
+
+  // Jangan mengubah tampilan jika elemen utama tidak ditemukan.
+  if (!loginSection || !examSection || !resultSection) {
+    console.error("Elemen utama halaman tidak ditemukan.");
+    return;
+  }
+
+  // Tampilkan login; sembunyikan ruang ujian dan hasil.
+  loginSection.classList.remove("hidden");
+  examSection.classList.add("hidden");
+  resultSection.classList.add("hidden");
+
+  // Hapus draf agar tidak ada sesi lama yang dipulihkan.
+  localStorage.removeItem(
+    typeof DRAFT_KEY !== "undefined"
+      ? DRAFT_KEY
+      : "cbt_unimed_active_draft"
+  );
+});
