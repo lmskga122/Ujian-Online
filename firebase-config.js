@@ -1,4 +1,3 @@
-
 (function () {
   const firebaseConfig = {
     apiKey: "AIzaSyCJVo3mIRQ-mtu_8ksRevBpn2P5NGdLX18",
@@ -20,14 +19,16 @@
       firebase.initializeApp(firebaseConfig);
     }
 
-    // Pastikan SDK Authentication dan Firestore tersedia.
+    // Inisialisasi layanan Firebase.
     const auth = firebase.auth();
     const db = firebase.firestore();
+    const functions = firebase.app().functions("asia-southeast2");
 
-    // Satu objek layanan untuk digunakan script.js.
+    // Layanan yang digunakan oleh script.js.
     window.firebaseServices = {
       auth: auth,
       db: db,
+      functions: functions,
 
       signInWithEmailAndPassword: function (
         authInstance,
@@ -49,9 +50,27 @@
       "[Firebase] Project:",
       firebase.app().options.projectId
     );
-    console.log("[Firebase] Authentication siap:", !!auth);
-    console.log("[Firebase] Firestore siap:", !!db);
+    console.log(
+      "[Firebase] Authentication siap:",
+      !!auth
+    );
+    console.log(
+      "[Firebase] Firestore siap:",
+      !!db
+    );
+    console.log(
+      "[Firebase] Cloud Functions siap:",
+      !!functions
+    );
+    console.log(
+      "[Firebase] Region:",
+      "asia-southeast2"
+    );
+
   } catch (error) {
-    console.error("[Firebase] Inisialisasi gagal:", error);
+    console.error(
+      "[Firebase] Inisialisasi gagal:",
+      error
+    );
   }
 })();
