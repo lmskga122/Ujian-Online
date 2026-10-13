@@ -123,6 +123,13 @@ let questionOrder = [];
 let shuffledOptions = {};
 let tabViolationCount = 0;
 let autosaveTimer = null;
+let examSessionToken = "";
+let examDeviceId = localStorage.getItem("cbt_exam_device_id");
+
+if (!examDeviceId) {
+  examDeviceId = crypto.randomUUID();
+  localStorage.setItem("cbt_exam_device_id", examDeviceId);
+}
 
 const MAX_TAB_VIOLATIONS = 2;
 const AUTOSAVE_INTERVAL_MS = 5000;
@@ -295,11 +302,7 @@ async function checkAdmin(event) {
 // Ini belum melakukan validasi terhadap daftar Firestore.
 // ============================================================
 
-
 async function startExam() {
-  // Selalu mulai sesi baru; jangan pulihkan sesi lama.
-  localStorage.removeItem(DRAFT_KEY);
-
   currentUser = $("username")?.value.trim() || "";
   currentNim = $("student-nim")?.value.trim() || "";
 
@@ -308,132 +311,143 @@ async function startExam() {
     return;
   }
 
-  // Validasi nama, NIM, dan kelas dari Firebase.
-  try {
-    const db = window.firebaseServices?.db;
+  const services = window.firebaseServices;
 
-    if (!db) {
-      throw new Error("Koneksi Firebase belum tersedia.");
-    }
-
-    const snapshot = await db
-      .collection("daftar_mahasiswa")
-      .where("nim", "==", currentNim)
-      .limit(1)
-      .get();
-
-    if (snapshot.empty) {
-      showLoginMessage("NIM tidak terdaftar. Periksa kembali NIM kamu.");
-      return;
-    }
-
-    const mahasiswa = snapshot.docs[0].data();
-    const namaTerdaftar = String(
-      mahasiswa.nama || mahasiswa.name || ""
-    ).trim();
-
-    if (namaTerdaftar.toLowerCase() !== currentUser.toLowerCase()) {
-      showLoginMessage("Nama tidak sesuai dengan NIM yang terdaftar.");
-      return;
-    }
-
-    userClass = String(mahasiswa.kelas || "").trim();
-
-    if (!userClass) {
-      showLoginMessage("Kelas belum terdaftar. Hubungi administrator.");
-      return;
-    }
-} catch (error) {
-  console.error("Validasi mahasiswa gagal:", error);
-  console.error("Kode error:", error.code);
-  console.error("Pesan error:", error.message);
-
-  showLoginMessage(
-    `Gagal memeriksa data mahasiswa: ${
-      error.code || error.message || "Kesalahan tidak diketahui"
-    }`
-  );
-
-  return;
-}
-
-  // Muat soal terlebih dahulu.
- const loaded = await loadQuestionsFromFirebase();
-
-if (!loaded || !Array.isArray(questions) || questions.length === 0) {
-  return;
-}
-
-// Ambil pengaturan dari admin.
-const settings = readAdminData("settings", {
-  duration: 30,
-  count: 20,
-  pass: 70
-});
-
-// Pilih soal sesuai jumlah pengaturan admin.
-const bankSoal = [...questions];
-shuffleArray(bankSoal);
-
-const jumlahSoal = Math.min(
-  Math.max(1, Number(settings.count) || 20),
-  bankSoal.length
-);
-
-questions = bankSoal.slice(0, jumlahSoal);
-
-// Atur durasi ujian dalam detik.
-timeLeft = Math.max(
-  1,
-  Number(settings.duration) || 30
-) * 60;
-
-// Simpan nilai minimum kelulusan.
-window.examPassScore = Math.min(
-  100,
-  Math.max(0, Number(settings.pass) || 70)
-);
-
-
-  // Mulai ujian baru.
-  currentIdx = 0;
-  userAnswers = {};
-  tabViolationCount = 0;
-
-  // Acak urutan soal yang sudah dipilih.
-  questionOrder = questions.map((_, i) => i);
-  shuffleArray(questionOrder);
-
-  // Acak pilihan jawaban setiap soal.
-  shuffledOptions = {};
-
-  questions.forEach((q, i) => {
-    shuffledOptions[i] = q.options.map((opt, j) => ({
-      text: opt,
-      originalIndex: j
-    }));
-
-    shuffleArray(shuffledOptions[i]);
-  });
-
-  // Tampilkan halaman ujian.
-  $("login-section")?.classList.add("hidden");
-  $("result-section")?.classList.add("hidden");
-  $("exam-section")?.classList.remove("hidden");
-
-  if ($("display-name")) {
-    $("display-name").textContent =
-      `${currentUser} · ${currentNim} · Kelas ${userClass}`;
+  if (!services?.functions) {
+    showLoginMessage(
+      "Cloud Functions belum tersedia. Periksa firebase-config.js."
+    );
+    return;
   }
 
-  renderQuestion();
-  renderNavigation();
-  updateTimerDisplay();
-  startTimer();
-  persistDraft();
+  const button = document.querySelector(
+    '#student-form button[type="submit"]'
+  );
+  const originalText = button?.textContent;
 
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Memverifikasi mahasiswa...";
+    }
+
+    // Validasi dilakukan oleh Cloud Function, bukan query Firestore.
+    const loginStudent = services.functions.httpsCallable("studentLogin");
+
+    const response = await loginStudent({
+      name: currentUser,
+      nim: currentNim,
+      deviceId: examDeviceId
+    });
+
+    const session = response.data;
+
+    if (!session?.ok || !session.sessionToken) {
+      throw new Error("Sesi ujian tidak berhasil dibuat.");
+    }
+
+    currentUser = session.name;
+    currentNim = session.nim;
+    userClass = session.kelas || "";
+    examSessionToken = session.sessionToken;
+
+    const loaded = await loadQuestionsFromFirebase();
+
+    if (!loaded || !questions.length) return;
+
+    const settings = readAdminData("settings", {
+      duration: 30,
+      count: 20,
+      pass: 70
+    });
+
+    const bankSoal = [...questions];
+    shuffleArray(bankSoal);
+
+    const jumlahSoal = Math.min(
+      Math.max(1, Number(settings.count) || 20),
+      bankSoal.length
+    );
+
+    questions = bankSoal.slice(0, jumlahSoal);
+
+    // Gunakan batas waktu dari server jika tersedia.
+    timeLeft = session.expiresAt
+      ? Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000))
+      : Math.max(1, Number(session.durationMinutes) || 30) * 60;
+
+    if (timeLeft <= 0) {
+      throw new Error("Waktu sesi ujian sudah habis.");
+    }
+
+    window.examPassScore = Math.min(
+      100,
+      Math.max(0, Number(settings.pass) || 70)
+    );
+
+    currentIdx = 0;
+    userAnswers = {};
+    tabViolationCount = 0;
+
+    questionOrder = questions.map((_, i) => i);
+    shuffleArray(questionOrder);
+
+    shuffledOptions = {};
+
+    questions.forEach((q, i) => {
+      shuffledOptions[i] = q.options.map((opt, j) => ({
+        text: opt,
+        originalIndex: j
+      }));
+
+      shuffleArray(shuffledOptions[i]);
+    });
+
+    $("login-section")?.classList.add("hidden");
+    $("result-section")?.classList.add("hidden");
+    $("exam-section")?.classList.remove("hidden");
+
+    if ($("display-name")) {
+      $("display-name").textContent =
+        `${currentUser} · ${currentNim} · Kelas ${userClass}`;
+    }
+
+    renderQuestion();
+    renderNavigation();
+    updateTimerDisplay();
+    startTimer();
+    persistDraft();
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+  } catch (error) {
+    console.error("Login mahasiswa gagal:", error);
+
+    const messages = {
+      "functions/not-found":
+        "Fungsi studentLogin tidak ditemukan. Periksa deployment Cloud Functions.",
+      "functions/unauthenticated":
+        "Sesi autentikasi tidak valid.",
+      "functions/permission-denied":
+        "Nama dan NIM tidak cocok.",
+      "functions/failed-precondition":
+        error.message || "Akses ujian belum tersedia atau sudah terkunci."
+    };
+
+    showLoginMessage(
+      messages[error.code] ||
+      error.message ||
+      "Login gagal. Periksa koneksi dan konfigurasi Firebase."
+    );
+
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText || "Mulai ujian";
+    }
+  }
 }
+
 
 // Blokir menu klik kanan pada area ujian
 document.addEventListener("contextmenu", event => {
